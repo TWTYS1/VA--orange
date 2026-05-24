@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>语音输入法产品策划：职场语音意图输入助手</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --paper: #ffffff;
+      --ink: #1c2530;
+      --muted: #647184;
+      --line: #dce2ea;
+      --brand: #0f766e;
+      --brand-dark: #0b5f59;
+      --accent: #b45309;
+      --soft: #e9f5f3;
+      --soft-accent: #fff4df;
+      --danger-soft: #fff1f2;
+      --shadow: 0 18px 45px rgba(28, 37, 48, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      line-height: 1.72;
+    }
+
+    a {
+      color: var(--brand-dark);
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+
+    .hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 36px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--brand-dark);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 820px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .nav a {
+      display: block;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .nav span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    section {
+      margin-top: 22px;
+      padding: 30px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 26px;
+      line-height: 1.28;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    ul {
+      margin: 10px 0 0;
+      padding-left: 22px;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 5px solid var(--brand);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .callout strong {
+      color: var(--brand-dark);
+    }
+
+    .warning {
+      border-left-color: var(--accent);
+      background: var(--soft-accent);
+    }
+
+    .risk {
+      border-left-color: #be123c;
+      background: var(--danger-soft);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .mini-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+
+    .mini-card h3 {
+      margin-top: 0;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border: 1px solid #b7d9d5;
+      border-radius: 999px;
+      background: #f3fbfa;
+      color: var(--brand-dark);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 14px;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      font-size: 15px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef3f6;
+      color: #24313f;
+      font-weight: 800;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fafbfc;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .day {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 16px;
+    }
+
+    .day h3 {
+      margin-top: 0;
+      color: var(--brand-dark);
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      margin: 28px 0 0;
+    }
+
+    @media (max-width: 860px) {
+      .hero,
+      section {
+        padding: 24px;
+      }
+
+      .nav,
+      .grid,
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .page {
+        width: min(100% - 20px, 1120px);
+        padding-top: 16px;
+      }
+
+      .hero,
+      section {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 30px;
+      }
+
+      .subtitle {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">ISO / ISOR 产品开题材料</p>
+      <h1>语音输入法产品策划：职场语音意图输入助手</h1>
+      <p class="subtitle">
+        题目不是简单做一个“能识别声音”的输入法，而是验证一个更具体的产品机会：
+        帮助职场用户把模糊口述快速转成得体、结构清晰、风险可控、可直接发送的文本。
+      </p>
+      <nav class="nav" aria-label="文档导航">
+        <a href="#insight">Insight<span>定义真问题</span></a>
+        <a href="#strategy">Strategy<span>三层策略框架</span></a>
+        <a href="#operation">Operation<span>72 小时执行</span></a>
+        <a href="#iteration">Iteration<span>迭代与规则差距</span></a>
+      </nav>
+    </header>
+
+    <section id="brief">
+      <h2>1. 题目理解</h2>
+      <p class="lead">
+        原题要求“开发一个语音输入法产品，帮助用户提高文本输入效率”，并强调准确度、易用性、响应速度、成本等关键因素。
+        产品经理视角下，重点不是堆语音识别能力，而是判断哪些效率问题值得被解决，以及 72 小时内如何做出可信 MVP。
+      </p>
+      <div class="callout">
+        <strong>产品重定义：</strong>
+        输入效率不是单纯的每分钟字数，而是从“想表达”到“可发送 / 可使用文本”的总成本。
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>层面</th>
+            <th>常规理解</th>
+            <th>本方案的理解</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>产品对象</td>
+            <td>通用语音输入法</td>
+            <td>职场沟通中的语音意图输入助手</td>
+          </tr>
+          <tr>
+            <td>核心价值</td>
+            <td>把声音转成文字</td>
+            <td>把口述意图转成可直接发送的回复</td>
+          </tr>
+          <tr>
+            <td>72 小时范围</td>
+            <td>完整系统级输入法</td>
+            <td>Web 单页 MVP，验证核心链路</td>
+          </tr>
+          <tr>
+            <td>成功标准</td>
+            <td>识别率越高越好</td>
+            <td>用户更少思考、更少修改、更快得到可用文本</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="insight">
+      <h2>2. Insight 洞察架构</h2>
+      <p class="lead">
+        先从第一性原理拆解“输入效率”。职场用户的瓶颈通常不是不会输入，而是不确定怎么把想法组织成合适的话。
+      </p>
+
+      <div class="grid">
+        <div class="mini-card">
+          <h3>目标用户</h3>
+          <p>产品、运营、销售、客服、项目管理等高频文字沟通人群。</p>
+        </div>
+        <div class="mini-card">
+          <h3>核心场景</h3>
+          <p>微信、飞书、邮件、客户群、跨部门协作中的中长文本回复。</p>
+        </div>
+        <div class="mini-card">
+          <h3>关键任务</h3>
+          <p>快速把口述想法变成得体、清晰、可复制发送的职场文本。</p>
+        </div>
+      </div>
+
+      <h3>真问题</h3>
+      <ul>
+        <li>用户慢，不只是打字慢，而是组织表达慢。</li>
+        <li>用户不是不会说，而是说出来的口语内容不能直接发。</li>
+        <li>真正卡点是识别后还要改、整理、换语气、补结构。</li>
+        <li>职场回复还存在沟通风险，例如语气太硬、承诺过度、下一步不明确。</li>
+      </ul>
+
+      <h3>输入效率拆解</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>效率维度</th>
+            <th>用户感知</th>
+            <th>语音输入机会</th>
+            <th>主要风险</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>原始输入速度</td>
+            <td>文字出现得是否够快</td>
+            <td>口述通常快于手机键盘输入</td>
+            <td>环境嘈杂或表达不清会降低识别质量</td>
+          </tr>
+          <tr>
+            <td>修改成本</td>
+            <td>错了以后改起来是否麻烦</td>
+            <td>减少重打长文本</td>
+            <td>错词、专名、标点会反噬效率</td>
+          </tr>
+          <tr>
+            <td>认知成本</td>
+            <td>是否要反复思考怎么说</td>
+            <td>口述降低手部操作负担</td>
+            <td>用户仍要把想法组织成可发送语言</td>
+          </tr>
+          <tr>
+            <td>格式成本</td>
+            <td>文本是否能直接贴到聊天或邮件</td>
+            <td>自动分段、提炼重点</td>
+            <td>口语稿天然松散，常常不能直接使用</td>
+          </tr>
+          <tr>
+            <td>场景切换成本</td>
+            <td>能否跨工具复用</td>
+            <td>Web MVP 可复制到多种应用</td>
+            <td>不如系统输入法天然跨应用</td>
+          </tr>
+          <tr>
+            <td>信任 / 隐私成本</td>
+            <td>用户是否敢说敏感内容</td>
+            <td>可说明本地优先、按需调用 AI</td>
+            <td>云端识别和大模型处理会带来顾虑</td>
+          </tr>
+          <tr>
+            <td>沟通风险成本</td>
+            <td>回复是否得体、明确、可控</td>
+            <td>按对象和语气生成版本，做风险检查</td>
+            <td>生成文本可能误解用户真实意图</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>核心洞察：</strong>
+        在职场沟通场景中，文本输入效率的核心瓶颈已经不只是“输入速度”，而是“把模糊口述快速转成得体、结构清晰、风险可控的可发送文本”。现有语音输入法主要解决“听清楚”，但用户还需要产品帮助他“说合适”。
+      </div>
+    </section>
+
+    <section id="competitor">
+      <h2>3. 竞品分析结论占位</h2>
+      <p class="lead">
+        竞品分析将由单独报告补充。本节先保留结构，后续可把 Claude Code 或人工调研结果粘贴进来。
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>待补充模块</th>
+            <th>建议回答的问题</th>
+            <th>对本项目的影响</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>竞品已满足能力</td>
+            <td>语音识别、自动标点、中英混输、基础 AI 润色是否已经普遍存在？</td>
+            <td>避免把基础能力包装成差异化创新。</td>
+          </tr>
+          <tr>
+            <td>仍存在的产品空位</td>
+            <td>竞品是否解决“职场对象感、结构化回复、风险检查、低修改成本”？</td>
+            <td>决定 MVP 应该切入哪个更窄但更明确的任务。</td>
+          </tr>
+          <tr>
+            <td>我们的差异化机会</td>
+            <td>用户从口述到可发送文本的链路，哪里还能显著缩短？</td>
+            <td>确定核心功能优先级和 Demo 叙事。</td>
+          </tr>
+          <tr>
+            <td>假创新 vs 真创新</td>
+            <td>哪些只是已有功能组合，哪些真正改变任务链路？</td>
+            <td>保证产品方案经得起产品经理岗追问。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout warning">
+        <strong>当前判断：</strong>
+        “语音转文字 + AI 润色”偏弱创新；“按沟通对象和任务意图生成可发送回复，并提示表达风险”更接近真实场景创新。
+      </div>
+    </section>
+
+    <section id="strategy">
+      <h2>4. Strategy 策略框架</h2>
+      <p class="lead">
+        策略层用“用户行为层 → 系统设计层 → 方案解决层”组织。它能把洞察从一句话变成可开发、可解释、可验证的产品路径。
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>分析层</th>
+            <th>关键问题</th>
+            <th>策略方向</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>用户行为层</td>
+            <td>
+              职场用户为什么回复慢？不知道怎么表达合适；需要根据对象调整语气；口述内容散乱；
+              反复删除重写；担心承诺过度或语气冒犯。
+            </td>
+            <td>降低思考链路，让用户只需说出意图，不必一次说出成稿。</td>
+          </tr>
+          <tr>
+            <td>系统设计层</td>
+            <td>
+              现有产品多把声音变成文字，但没有把意图变成回复；缺少对象感、场景感、结构提取和风险提示；
+              修改链路仍然偏重。
+            </td>
+            <td>把输入系统从“识别工具”升级为“沟通文本生成工作流”。</td>
+          </tr>
+          <tr>
+            <td>方案解决层</td>
+            <td>
+              MVP 如何在 72 小时内解决核心问题？需要语音转写、口语整理、按对象生成回复、多语气版本、
+              沟通风险检查、一键复制和编辑。
+            </td>
+            <td>做出一条完整 Demo 链路：口述意图 → 结构整理 → 多版本回复 → 风险提示 → 复制发送。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>功能优先级</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>优先级</th>
+            <th>功能</th>
+            <th>解决的问题</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>P0</td>
+            <td>原始口述输入 / 语音转写占位</td>
+            <td>验证“从口述开始”的核心入口。</td>
+          </tr>
+          <tr>
+            <td>P0</td>
+            <td>目标对象选择：领导、同事、客户、下属</td>
+            <td>把回复从通用润色变成有对象感的职场表达。</td>
+          </tr>
+          <tr>
+            <td>P0</td>
+            <td>多语气版本：简洁、礼貌、推进、正式</td>
+            <td>降低反复试错和修改成本。</td>
+          </tr>
+          <tr>
+            <td>P1</td>
+            <td>结构化整理：结论、原因、时间、下一步</td>
+            <td>把散乱口述变成清晰文本。</td>
+          </tr>
+          <tr>
+            <td>P1</td>
+            <td>风险提示：语气、承诺、下一步、责任边界</td>
+            <td>降低职场沟通风险。</td>
+          </tr>
+          <tr>
+            <td>P2</td>
+            <td>个人术语库、联系人偏好、历史学习</td>
+            <td>作为后续迭代，不进入首版 72 小时核心范围。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="architecture">
+      <h2>5. 开发架构与约束</h2>
+      <p class="lead">
+        技术形态默认是 Web 单页应用，目标是稳定展示产品闭环，而不是挑战完整系统级输入法开发。
+      </p>
+
+      <div class="grid">
+        <div class="mini-card">
+          <h3>前端模块</h3>
+          <ul>
+            <li>录音控制</li>
+            <li>实时转写区</li>
+            <li>文本编辑区</li>
+            <li>AI 整理区</li>
+            <li>版本选择区</li>
+          </ul>
+        </div>
+        <div class="mini-card">
+          <h3>语音输入</h3>
+          <ul>
+            <li>优先使用 Web Speech API</li>
+            <li>提供 mock 输入兜底</li>
+            <li>保证 Demo 稳定性优先</li>
+          </ul>
+        </div>
+        <div class="mini-card">
+          <h3>AI 能力</h3>
+          <ul>
+            <li>通过接口封装</li>
+            <li>可替换 OpenAI / Claude / 本地规则</li>
+            <li>Demo 可先用规则化 mock</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>核心数据结构</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>字段</th>
+            <th>说明</th>
+            <th>示例</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>原始口述文本</td>
+            <td>用户直接说出的内容，允许口语化和不完整。</td>
+            <td>“跟他说供应商还没确认，今天报价给不了，最快明天下午。”</td>
+          </tr>
+          <tr>
+            <td>目标对象</td>
+            <td>决定回复语气和措辞边界。</td>
+            <td>领导 / 同事 / 客户 / 下属</td>
+          </tr>
+          <tr>
+            <td>回复风格</td>
+            <td>控制输出文本的表达倾向。</td>
+            <td>简洁 / 礼貌 / 推进 / 正式</td>
+          </tr>
+          <tr>
+            <td>生成结果</td>
+            <td>可复制、可编辑、可发送的文本。</td>
+            <td>“目前供应商仍在确认成本信息，因此今天暂时无法给出最终报价...”</td>
+          </tr>
+          <tr>
+            <td>风险提示</td>
+            <td>提醒用户补充时间、责任边界或下一步。</td>
+            <td>“建议补充明确更新时间，避免对方误解。”</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout risk">
+        <strong>开发约束：</strong>
+        72 小时内不做系统级输入法，不追求大厂级识别率，不存储敏感文本到后端；README 需要说明隐私策略，Demo 必须展示完整链路。
+      </div>
+    </section>
+
+    <section id="operation">
+      <h2>6. Operation 执行层</h2>
+      <p class="lead">
+        执行层要符合活动规则：持续提交、持续 PR、README 清晰、Demo 可播放、代码公开可访问。
+      </p>
+
+      <div class="timeline">
+        <div class="day">
+          <h3>Day 1：闭环优先</h3>
+          <ul>
+            <li>创建 GitHub / Gitee 仓库。</li>
+            <li>提交 README 初版，写清定位与 MVP 范围。</li>
+            <li>完成 HTML / CSS / JS 基础页面。</li>
+            <li>打通“输入 / 录音 → 原始文本 → 可编辑”。</li>
+          </ul>
+        </div>
+        <div class="day">
+          <h3>Day 2：差异化体验</h3>
+          <ul>
+            <li>增加对象选择与语气选择。</li>
+            <li>支持多版本回复生成。</li>
+            <li>增加结构化整理：结论、原因、时间、下一步。</li>
+            <li>增加风险提示。</li>
+          </ul>
+        </div>
+        <div class="day">
+          <h3>Day 3：评审包装</h3>
+          <ul>
+            <li>打磨 UI 和演示数据。</li>
+            <li>完善 README、依赖说明和原创说明。</li>
+            <li>录制 Demo 视频并放在 README 显眼位置。</li>
+            <li>检查 PR、commit、仓库可访问性。</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>评估指标</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>指标</th>
+            <th>含义</th>
+            <th>Demo 中如何体现</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>从口述到可复制文本的时间</td>
+            <td>衡量总链路效率，而不是单纯识别速度。</td>
+            <td>展示同一句口述快速生成回复。</td>
+          </tr>
+          <tr>
+            <td>用户修改次数</td>
+            <td>修改越少，说明输出越接近可发送状态。</td>
+            <td>展示多版本选择和一键复制。</td>
+          </tr>
+          <tr>
+            <td>生成文本可发送率</td>
+            <td>判断文本是否得体、完整、结构清楚。</td>
+            <td>用领导、客户、同事三个样例对比。</td>
+          </tr>
+          <tr>
+            <td>风险提示覆盖率</td>
+            <td>判断是否识别出时间、承诺、语气等沟通风险。</td>
+            <td>展示提示“补充更新时间 / 下一步”。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="iteration">
+      <h2>7. Iteration 与规则差距检查</h2>
+
+      <h3>迭代路线</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>版本</th>
+            <th>目标</th>
+            <th>核心能力</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>V1</td>
+            <td>职场回复助手</td>
+            <td>口述输入、对象选择、语气选择、多版本回复、风险提示。</td>
+          </tr>
+          <tr>
+            <td>V2</td>
+            <td>真实能力接入</td>
+            <td>接入真实语音识别与真实 LLM，替换 mock 逻辑。</td>
+          </tr>
+          <tr>
+            <td>V3</td>
+            <td>个性化效率提升</td>
+            <td>个人术语库、联系人语气偏好、历史回复学习。</td>
+          </tr>
+          <tr>
+            <td>V4</td>
+            <td>跨应用输入</td>
+            <td>浏览器插件、桌面悬浮窗或系统输入法扩展。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>活动规则差距</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>规则要求</th>
+            <th>当前规划是否覆盖</th>
+            <th>后续动作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>公开 GitHub / Gitee 仓库</td>
+            <td>未完成，仅规划覆盖</td>
+            <td>开题后立即创建仓库并提交地址。</td>
+          </tr>
+          <tr>
+            <td>持续 PR 和 commit</td>
+            <td>未完成，仅规划覆盖</td>
+            <td>按 Day 1 / Day 2 / Day 3 拆小 PR。</td>
+          </tr>
+          <tr>
+            <td>README 文档</td>
+            <td>未完成，仅规划覆盖</td>
+            <td>README 要写清定位、功能、运行方式、依赖和隐私说明。</td>
+          </tr>
+          <tr>
+            <td>Demo 视频外链</td>
+            <td>未完成，仅规划覆盖</td>
+            <td>第 3 天录制并放到 README 显眼位置。</td>
+          </tr>
+          <tr>
+            <td>第三方依赖与原创说明</td>
+            <td>规划覆盖</td>
+            <td>README 中明确 Web Speech API、LLM 或 mock 规则来源。</td>
+          </tr>
+          <tr>
+            <td>截止后代码可公开访问</td>
+            <td>未完成</td>
+            <td>提交前检查仓库权限和链接有效性。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>结论：</strong>
+        当前方案与活动要求的主要差距不在产品思路，而在工程交付证据：仓库、PR、commit、README、Demo 视频和公开访问状态。下一步应先建仓库和 README，再进入 MVP 实现。
+      </div>
+
+      <div class="tag-row" aria-label="关键词">
+        <span class="tag">职场回复</span>
+        <span class="tag">语音意图输入</span>
+        <span class="tag">低修改成本</span>
+        <span class="tag">对象感表达</span>
+        <span class="tag">风险提示</span>
+        <span class="tag">72 小时 MVP</span>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      本文档为产品策划与开题分析材料，不声称 MVP 已经完成。后续实现应以仓库提交、README 和 Demo 视频为准。
+    </p>
+  </main>
+</body>
+</html>
