@@ -176,7 +176,7 @@ npm run build
 - [x] 第三方依赖说明
 - [x] 原创功能说明
 - [x] PR / commit 记录：按功能模块持续提交
-- [ ] Demo 视频链接：待补充
+- [x] Demo 视频链接：待补充
 
 ## 原创功能说明
 
@@ -195,3 +195,10 @@ demo 链接
 我用夸克网盘给你分享了「VoiceFlow 职场语音意图输入助手 - 个人 - Microsoft​ Edge 2026-05-25 23-52-12.mp4」，点击链接或复制整段内容，打开「夸克APP」即可获取。
 /~9c383YkFVQ~:/
 链接：https://pan.quark.cn/s/8449e64a123c
+
+视频存在噪音
+**新版**
+我用夸克网盘给你分享了「VoiceFlow 职场语音意图输入助手 - 个人 - Microsoft​ Edge 2026-05-26 00-07-48.mp4」，点击链接或复制整段内容，打开「夸克APP」即可获取。
+/~6d8f3YkG8Q~:/
+链接：https://pan.quark.cn/s/d29f4e91b16e
+
