@@ -211,6 +211,12 @@ h2 {
   color: #ffffff;
 }
 
+.primary-button:disabled,
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .helper-text,
 .error-text {
   margin: 12px 0 0;
@@ -219,6 +225,60 @@ h2 {
 
 .helper-text {
   color: #667386;
+}
+
+.interim-transcript {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border: 1px dashed #b7d9d5;
+  border-radius: 6px;
+  background: #f4fbfa;
+  color: #0b5f59;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.speech-button {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.speech-idle {
+  border: 1px solid #0f766e;
+  background: #ffffff;
+  color: #0f766e;
+}
+
+.speech-idle:hover {
+  background: #edf8f6;
+}
+
+.speech-listening {
+  border: 1px solid #be123c;
+  background: #be123c;
+  color: #ffffff;
+  animation: pulse-recording 1.5s ease-in-out infinite;
+}
+
+.speech-listening:hover {
+  background: #9a0e30;
+}
+
+.speech-unsupported {
+  border: 1px solid #cfd8e3;
+  background: #f5f7fa;
+  color: #999;
+  cursor: not-allowed;
+}
+
+@keyframes pulse-recording {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(190, 18, 60, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(190, 18, 60, 0); }
 }
 
 .error-text {

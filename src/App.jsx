@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InputPanel } from './components/InputPanel.jsx';
 import { OptionControls } from './components/OptionControls.jsx';
 import { BasisPanel } from './components/BasisPanel.jsx';
@@ -12,6 +12,10 @@ import {
   scenarioLabels,
   toneLabels
 } from './lib/generateReply.js';
+import {
+  createSpeechRecognizer,
+  isSpeechRecognitionSupported
+} from './lib/speechInput.js';
 
 const scenarioOptions = Object.entries(scenarioLabels).map(([value, label]) => ({ value, label }));
 const audienceOptions = Object.entries(audienceLabels).map(([value, label]) => ({ value, label }));
@@ -50,6 +54,17 @@ function App() {
     tone: examples[0].tone
   });
 
+  // ── speech state ──────────────────────────────
+  const speechSupported = useRef(isSpeechRecognitionSupported());
+  const recognizerRef = useRef(null);
+  const [speechState, setSpeechState] = useState(
+    speechSupported.current ? 'idle' : 'unsupported'
+  );
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [speechError, setSpeechError] = useState('');
+
+  const isListening = speechState === 'listening';
+
   const contextDirty =
     rawText.trim() !== '' &&
     (rawText.trim() !== generatedParams.rawText.trim() ||
@@ -62,6 +77,62 @@ function App() {
     [scenario, audience, tone]
   );
 
+  // ── speech handlers ───────────────────────────
+  const handleStartSpeech = useCallback(() => {
+    if (!speechSupported.current || isListening) return;
+
+    setSpeechError('');
+    setInterimTranscript('');
+
+    const recognizer = createSpeechRecognizer({
+      onStart: () => {
+        setSpeechState('listening');
+      },
+      onTranscript: ({ finalText, interimText }) => {
+        if (finalText.trim()) {
+          setRawText((prev) => {
+            const trimmed = prev.trim();
+            if (!trimmed) return finalText.trim();
+            return trimmed + '，' + finalText.trim();
+          });
+          setInterimTranscript('');
+        } else {
+          setInterimTranscript(interimText);
+        }
+      },
+      onEnd: () => {
+        setSpeechState('idle');
+        setInterimTranscript('');
+        recognizerRef.current = null;
+      },
+      onError: (err) => {
+        setSpeechState('error');
+        setSpeechError(err.message);
+        setInterimTranscript('');
+        recognizerRef.current = null;
+      }
+    });
+
+    recognizerRef.current = recognizer;
+    recognizer.start();
+  }, [isListening]);
+
+  const handleStopSpeech = useCallback(() => {
+    if (recognizerRef.current) {
+      recognizerRef.current.stop();
+    }
+  }, []);
+
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recognizerRef.current) {
+        recognizerRef.current.dispose();
+      }
+    };
+  }, []);
+
+  // ── existing handlers ─────────────────────────
   function handleGenerate() {
     if (!rawText.trim()) {
       const nextResult = generateReply({ rawText, scenario, audience, tone });
@@ -166,10 +237,16 @@ function App() {
           <InputPanel
             rawText={rawText}
             error={error}
+            speechState={speechState}
+            interimTranscript={interimTranscript}
+            speechError={speechError}
+            speechSupported={speechSupported.current}
             onRawTextChange={setRawText}
             onUseExample={handleUseExample}
             onClear={handleClear}
             onGenerate={handleGenerate}
+            onStartSpeech={handleStartSpeech}
+            onStopSpeech={handleStopSpeech}
           />
           <OptionControls
             scenario={scenario}

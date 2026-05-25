@@ -7,7 +7,7 @@
 VoiceFlow 当前是一个 Vite React 单页应用，目标是验证"职场语音意图输入助手"的核心链路：
 
 ```text
-口述意图 / 模拟语音输入
+口述意图（文本输入 / 真实语音输入 / 模拟样例）
   -> 选择意图场景、沟通对象和回复风格
   -> 生成依据展示
   -> 结构化理解
@@ -45,7 +45,9 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证"职场语音
     │   └── examples.js
     └── lib
         ├── generateReply.js
-        └── generateReply.test.js
+        ├── generateReply.test.js
+        ├── speechInput.js
+        └── speechInput.test.js
 ```
 
 核心边界：
@@ -57,7 +59,8 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证"职场语音
 | `components/BasisPanel.jsx` | 展示生成依据：意图场景、沟通对象、回复风格、解释文本 | 可复用 |
 | `data/examples.js` | 五类意图场景演示样例，模拟语音输入 | 可扩展为 Demo 脚本库 |
 | `lib/generateReply.js` | Mock 规则引擎，生成结构化结果、多版本回复、风险提示和生成依据 | 可替换为 LLM adapter |
-| `lib/generateReply.test.js` | 验证核心生成逻辑 | 后续保留为回归测试 |
+| `lib/speechInput.js` | 浏览器语音识别适配层，封装 SpeechRecognition API | 可替换为云 ASR adapter |
+| `lib/speechInput.test.js` | 验证语音能力检测、识别器创建、事件传递 | 后续保留为回归测试 |
 
 ## 3. 数据流
 
@@ -117,7 +120,29 @@ generateReply({
 
 这个接口已经具备清晰的替换边界：后续接入真实 LLM 时，UI 层不需要重写，只需要把 `generateReply` 替换为异步 adapter。
 
-### 第二阶段新增
+### 语音输入数据流（PR #3 新增）
+
+```mermaid
+flowchart LR
+  A["浏览器 SpeechRecognition"] --> B["speechInput.js 适配层"]
+  B -->|interimTranscript| C["App 状态: interimTranscript"]
+  B -->|finalText| D["追加到 rawText"]
+  D --> E["generateReply(input)"]
+  E --> F["basis / summary / replies / risks"]
+```
+
+语音输入与回复生成引擎完全解耦：
+
+- `speechInput.js` 仅负责封装浏览器 Speech API，输出稳定回调事件。
+- `App.jsx` 将最终转写结果追加到 `rawText`，复用现有语境变化检测和生成流程。
+- `generateReply` 的输入参数和返回结构不受任何影响。
+- 浏览器不支持时，自动降级为文本输入和演示样例，不影响核心体验闭环。
+
+后续替换路径：
+- 将 `speechInput.js` 替换为云 ASR adapter（讯飞/Whisper）→ 不影响 UI 层。
+- 将 `generateReply.js` 替换为 LLM adapter → 不影响语音输入层。
+
+### 第二阶段新增（PR #2）
 
 在 PR #2 中新增了 `scenario` 参数和 `basis` 返回字段。五个场景 (`progress` / `request` / `negotiate` / `followup` / `confirm`) 各有独立的推断逻辑和风险检查规则。
 
@@ -128,6 +153,7 @@ generateReply({
 已完成：
 
 - React 单页应用。
+- **真实语音输入**：浏览器语音识别（Chrome/Edge），录音状态展示、临时转写、降级提示。
 - Mock 语音输入样例（五类意图场景各一个）。
 - 意图场景选择：同步进展、请求协作、拒绝协商、催促推进、确认回应。
 - 沟通对象选择：领导、同事、客户、下属。
@@ -160,19 +186,9 @@ npm run build   # ✓ built
 
 ## 6. 下一步方向建议
 
-### 方向 A：真实语音入口（PR #3）
+### 方向 A：接入真实 LLM（PR #4）
 
 适合下一阶段做。
-
-- 新增 `src/lib/speechInput.js`，封装 Web Speech API。
-- UI 增加真实录音按钮和浏览器兼容提示。
-- 不支持 Web Speech API 时回退到文本输入和模拟语音输入。
-
-价值：更接近"语音输入法"题面，但浏览器兼容性和权限会带来 Demo 风险。
-
-### 方向 B：接入真实 LLM（PR #4）
-
-适合后续做。
 
 - 新增 `src/lib/replyAdapter.js`。
 - 默认继续 Mock，配置环境变量后使用真实 LLM。
@@ -180,17 +196,21 @@ npm run build   # ✓ built
 
 价值：生成效果更自然，但需要处理 API Key、网络、费用、隐私说明。
 
+### 方向 B：云 ASR 接入（远期）
+
+当前已使用浏览器 Speech API 实现真实语音输入。后续可替换为讯飞/Whisper 等云 ASR 以获得更高中文识别准确率和更广的浏览器兼容性。
+
 ### 方向 C：场景自动识别（远期）
 
 当前用户显式选择意图场景。当 LLM 能力成熟后，可将 `scenario` 参数改为可选——系统自动推断意图分类，仅在置信度低或用户需要覆盖时才展示场景选择器。
 
 ## 7. 推荐下一步
 
-建议优先做 **方向 A**（真实语音入口）：
+建议优先做 **方向 A**（真实 LLM 接入）：
 
 ```text
-第二阶段场景化和 Demo 表达已完成
-  -> 接入 Web Speech API 做真实录音
-  -> 保留文本输入和模拟语音作为回退
-  -> PR #3
+第三阶段真实语音入口已完成
+  -> 接入真实 LLM 替代 Mock 规则引擎
+  -> 默认 Mock、可切换 LLM
+  -> PR #4
 ```
