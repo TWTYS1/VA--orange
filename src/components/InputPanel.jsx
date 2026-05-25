@@ -15,6 +15,7 @@ export function InputPanel({
 }) {
   const isListening = speechState === 'listening';
   const isStarting = speechState === 'starting';
+  const isFinishing = speechState === 'finishing';
   const isUnsupported = speechState === 'unsupported';
   const hasSpeechError = speechState === 'error';
 
@@ -39,10 +40,18 @@ export function InputPanel({
       );
     }
 
+    if (isFinishing) {
+      return (
+        <button className="speech-button speech-idle" type="button" disabled>
+          正在完成转写...
+        </button>
+      );
+    }
+
     if (isStarting) {
       return (
         <button className="speech-button speech-idle" type="button" disabled>
-          正在连接麦克风...
+          正在连接识别服务...
         </button>
       );
     }
@@ -59,6 +68,13 @@ export function InputPanel({
     );
   }
 
+  function statusLabel() {
+    if (isStarting) return '正在连接...';
+    if (isListening) return '正在听写...';
+    if (isFinishing) return '正在完成...';
+    return '语音输入可用';
+  }
+
   return (
     <section className="panel input-panel" aria-labelledby="input-title">
       <div className="panel-heading">
@@ -67,9 +83,7 @@ export function InputPanel({
           <h2 id="input-title">说出意图</h2>
         </div>
         {speechSupported ? (
-          <span className="status-pill">
-            {isStarting ? '正在连接...' : isListening ? '正在听写...' : '语音输入可用'}
-          </span>
+          <span className="status-pill">{statusLabel()}</span>
         ) : (
           <span className="status-pill">Mock 语音输入</span>
         )}
@@ -98,7 +112,7 @@ export function InputPanel({
 
       {isUnsupported && (
         <p className="helper-text">
-          你当前浏览器不支持语音识别。推荐使用 Chrome 或 Edge 演示语音输入，或继续使用文本输入和演示样例完成体验。
+          你当前浏览器不支持麦克风采集。请使用 Chrome 或 Edge 演示语音输入，或继续使用文本输入和演示样例完成体验。
         </p>
       )}
 
@@ -130,7 +144,7 @@ export function InputPanel({
 
       <p className="helper-text">
         {speechSupported
-          ? '点击「开始语音输入」使用浏览器语音识别口述内容，最终转写结果会追加到文本框。录音中部分按钮不可用。当前回复生成仍使用本地 Mock 规则。'
+          ? '点击「开始语音输入」将通过麦克风采集音频，经本地代理发送至阿里云百炼 Paraformer 进行识别，最终转写追加到文本框。录音期间部分按钮不可用。当前回复生成仍使用本地 Mock 规则。'
           : '首版不接真实 ASR，使用文本框和示例模拟口述输入，重点验证"意图到回复"的产品闭环。'}
       </p>
     </section>

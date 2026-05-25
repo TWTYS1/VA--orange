@@ -27,9 +27,13 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证"职场语音
 ├── voice-input-pm-analysis.html
 ├── 竞品分析报告-语音输入助手MVP.md
 ├── PRD-职场嘴替_v2.md
+├── .env.example
 ├── package.json
 ├── vite.config.js
 ├── index.html
+├── server/
+│   ├── asrProxy.js
+│   └── dashscopeSession.js
 └── src
     ├── main.jsx
     ├── App.jsx
@@ -46,8 +50,10 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证"职场语音
     └── lib
         ├── generateReply.js
         ├── generateReply.test.js
-        ├── speechInput.js
-        └── speechInput.test.js
+        ├── audioCapture.js
+        ├── audioCapture.test.js
+        ├── cloudSpeechInput.js
+        └── cloudSpeechInput.test.js
 ```
 
 核心边界：
@@ -59,8 +65,10 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证"职场语音
 | `components/BasisPanel.jsx` | 展示生成依据：意图场景、沟通对象、回复风格、解释文本 | 可复用 |
 | `data/examples.js` | 五类意图场景演示样例，模拟语音输入 | 可扩展为 Demo 脚本库 |
 | `lib/generateReply.js` | Mock 规则引擎，生成结构化结果、多版本回复、风险提示和生成依据 | 可替换为 LLM adapter |
-| `lib/speechInput.js` | 浏览器语音识别适配层，封装 SpeechRecognition API | 可替换为云 ASR adapter |
-| `lib/speechInput.test.js` | 验证语音能力检测、识别器创建、事件传递 | 后续保留为回归测试 |
+| `server/asrProxy.js` | 本地 WebSocket 代理，转发音频到 DashScope 并回传结果 | 可替换为其他 ASR 代理 |
+| `server/dashscopeSession.js` | DashScope WebSocket 会话管理、鉴权、事件映射 | 可独立替换 |
+| `lib/audioCapture.js` | 麦克风采集 + 16k mono Int16 PCM 重采样 | MVP 用 ScriptProcessor，可升级 AudioWorklet |
+| `lib/cloudSpeechInput.js` | 前端 WebSocket 客户端，连接本地代理收发事件 | 可替换为其他 ASR 适配器 |
 
 ## 3. 数据流
 
@@ -120,27 +128,31 @@ generateReply({
 
 这个接口已经具备清晰的替换边界：后续接入真实 LLM 时，UI 层不需要重写，只需要把 `generateReply` 替换为异步 adapter。
 
-### 语音输入数据流（PR #3 新增）
+### 语音输入数据流（DashScope ASR）
 
 ```mermaid
 flowchart LR
-  A["浏览器 SpeechRecognition"] --> B["speechInput.js 适配层"]
-  B -->|interimTranscript| C["App 状态: interimTranscript"]
-  B -->|finalText| D["追加到 rawText"]
-  D --> E["generateReply(input)"]
-  E --> F["basis / summary / replies / risks"]
+  A["麦克风 getUserMedia"] --> B["audioCapture.js"]
+  B -->|16k mono Int16 PCM| C["cloudSpeechInput.js"]
+  C -->|WebSocket binary| D["server/asrProxy.js"]
+  D -->|PCM forward| E["dashscopeSession.js"]
+  E -->|DashScope WS| F["paraformer-realtime-v2"]
+  F -->|transcript| E
+  E -->|interim / final| D
+  D -->|JSON event| C
+  C -->|onInterim / onFinal| G["App 状态 → rawText"]
+  G --> H["generateReply(input)"]
+  H --> I["basis / summary / replies / risks"]
 ```
 
-语音输入与回复生成引擎完全解耦：
+真实 ASR 与 Mock 回复生成是两层独立能力：
 
-- `speechInput.js` 仅负责封装浏览器 Speech API，输出稳定回调事件。
-- `App.jsx` 将最终转写结果追加到 `rawText`，复用现有语境变化检测和生成流程。
+- `audioCapture.js` 仅负责麦克风采集与 PCM 转换，不处理网络通信。
+- `cloudSpeechInput.js` 仅负责与本地代理的 WebSocket 通信，不处理音频。
+- `server/asrProxy.js` + `dashscopeSession.js` 管理 DashScope 会话，密钥在服务端。
+- `App.jsx` 将转写结果追加到 `rawText`，复用现有语境变化检测和生成流程。
 - `generateReply` 的输入参数和返回结构不受任何影响。
-- 浏览器不支持时，自动降级为文本输入和演示样例，不影响核心体验闭环。
-
-后续替换路径：
-- 将 `speechInput.js` 替换为云 ASR adapter（讯飞/Whisper）→ 不影响 UI 层。
-- 将 `generateReply.js` 替换为 LLM adapter → 不影响语音输入层。
+- 无密钥或网络失败时，自动降级为文本输入和演示样例。
 
 ### 第二阶段新增（PR #2）
 
@@ -153,7 +165,7 @@ flowchart LR
 已完成：
 
 - React 单页应用。
-- **真实语音输入**：浏览器语音识别（Chrome/Edge），录音状态展示、临时转写、降级提示。
+- **真实语音输入**：麦克风采集 → 本地 Node 代理 → DashScope Paraformer 实时识别，录音状态展示、临时转写、连接/密钥/网络降级提示。
 - Mock 语音输入样例（五类意图场景各一个）。
 - 意图场景选择：同步进展、请求协作、拒绝协商、催促推进、确认回应。
 - 沟通对象选择：领导、同事、客户、下属。
@@ -165,12 +177,12 @@ flowchart LR
 - 语境变化检测：修改原始口述文本 (`rawText`)、场景 (`scenario`)、对象 (`audience`) 或风格 (`tone`) 后显示"语境已变化，请重新生成回复"。
 - 推荐回复编辑与复制。
 - README、ARCHITECTURE、PRD_v2、产品规划 HTML、竞品分析报告。
-- Vitest 单元测试覆盖 13 个场景（包含空输入和参数默认值）。
+- Vitest 单元测试覆盖 generateReply 场景、音频采集、云语音会话、App 语音交互。
 
 已验证：
 
 ```bash
-npm test   # 13 passed
+npm test   # 57 passed (5 test files)
 npm run build   # ✓ built
 ```
 
@@ -196,11 +208,7 @@ npm run build   # ✓ built
 
 价值：生成效果更自然，但需要处理 API Key、网络、费用、隐私说明。
 
-### 方向 B：云 ASR 接入（远期）
-
-当前已使用浏览器 Speech API 实现真实语音输入。后续可替换为讯飞/Whisper 等云 ASR 以获得更高中文识别准确率和更广的浏览器兼容性。
-
-### 方向 C：场景自动识别（远期）
+### 方向 B：场景自动识别（远期）
 
 当前用户显式选择意图场景。当 LLM 能力成熟后，可将 `scenario` 参数改为可选——系统自动推断意图分类，仅在置信度低或用户需要覆盖时才展示场景选择器。
 
@@ -209,7 +217,7 @@ npm run build   # ✓ built
 建议优先做 **方向 A**（真实 LLM 接入）：
 
 ```text
-第三阶段真实语音入口已完成
+DashScope ASR 语音入口已完成
   -> 接入真实 LLM 替代 Mock 规则引擎
   -> 默认 Mock、可切换 LLM
   -> PR #4

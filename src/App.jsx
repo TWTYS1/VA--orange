@@ -12,10 +12,8 @@ import {
   scenarioLabels,
   toneLabels
 } from './lib/generateReply.js';
-import {
-  createSpeechRecognizer,
-  isSpeechRecognitionSupported
-} from './lib/speechInput.js';
+import { createAudioCapture } from './lib/audioCapture.js';
+import { createCloudSpeechSession } from './lib/cloudSpeechInput.js';
 
 const scenarioOptions = Object.entries(scenarioLabels).map(([value, label]) => ({ value, label }));
 const audienceOptions = Object.entries(audienceLabels).map(([value, label]) => ({ value, label }));
@@ -28,7 +26,12 @@ const emptyResult = generateReply({
   tone: 'polite'
 });
 
+// Check if getUserMedia is available (not needed in SSR or http)
 function App() {
+  const voiceSupported = useRef(
+    typeof navigator !== 'undefined' && !!(navigator.mediaDevices?.getUserMedia)
+  ).current;
+
   const [rawText, setRawText] = useState(examples[0].text);
   const [scenario, setScenario] = useState(examples[0].scenario);
   const [audience, setAudience] = useState(examples[0].audience);
@@ -55,19 +58,19 @@ function App() {
   });
 
   // ── speech state ──────────────────────────────
-  const speechSupported = useRef(isSpeechRecognitionSupported());
-  const recognizerRef = useRef(null);
   const speechSessionActiveRef = useRef(false);
   const speechFailedRef = useRef(false);
   const receivedTranscriptRef = useRef(false);
   const pendingInterimRef = useRef('');
+  const captureRef = useRef(null);
+  const cloudRef = useRef(null);
   const [speechState, setSpeechState] = useState(
-    speechSupported.current ? 'idle' : 'unsupported'
+    voiceSupported ? 'idle' : 'unsupported'
   );
   const [interimTranscript, setInterimTranscript] = useState('');
   const [speechError, setSpeechError] = useState('');
 
-  const isSpeechBusy = speechState === 'starting' || speechState === 'listening';
+  const isSpeechBusy = speechState === 'starting' || speechState === 'listening' || speechState === 'finishing';
 
   const contextDirty =
     rawText.trim() !== '' &&
@@ -81,7 +84,19 @@ function App() {
     [scenario, audience, tone]
   );
 
-  // ── speech handlers ───────────────────────────
+  // ── speech helpers ────────────────────────────
+  const cleanupSpeechResources = useCallback(() => {
+    if (captureRef.current) {
+      captureRef.current.stop();
+      captureRef.current = null;
+    }
+    if (cloudRef.current) {
+      cloudRef.current.dispose();
+      cloudRef.current = null;
+    }
+    speechSessionActiveRef.current = false;
+  }, []);
+
   const appendSpeechText = useCallback((text) => {
     const segment = text.trim();
     if (!segment) return;
@@ -91,8 +106,9 @@ function App() {
     });
   }, []);
 
+  // ── speech handlers ───────────────────────────
   const handleStartSpeech = useCallback(() => {
-    if (!speechSupported.current || speechSessionActiveRef.current) return;
+    if (!voiceSupported || speechSessionActiveRef.current) return;
 
     speechSessionActiveRef.current = true;
     speechFailedRef.current = false;
@@ -102,31 +118,47 @@ function App() {
     setInterimTranscript('');
     setSpeechState('starting');
 
-    const recognizer = createSpeechRecognizer({
-      onStart: () => {
+    const cloudSession = createCloudSpeechSession({
+      onReady: () => {
+        cloudSession.sendStart();
+      },
+      onStarted: () => {
         setSpeechState('listening');
+
+        const capture = createAudioCapture({
+          onPcmFrame: (buffer) => {
+            cloudSession.sendPcm(buffer);
+          },
+          onError: (err) => {
+            speechFailedRef.current = true;
+            setSpeechState('error');
+            setSpeechError(err.message);
+            cleanupSpeechResources();
+          }
+        });
+
+        captureRef.current = capture;
+        capture.start();
       },
-      onTranscript: ({ finalText, interimText }) => {
-        if (finalText.trim()) {
-          receivedTranscriptRef.current = true;
-          appendSpeechText(finalText);
-        }
-        pendingInterimRef.current = interimText.trim();
-        if (interimText.trim()) receivedTranscriptRef.current = true;
-        setInterimTranscript(interimText);
+      onInterim: (text) => {
+        receivedTranscriptRef.current = true;
+        pendingInterimRef.current = text;
+        setInterimTranscript(text);
       },
-      onEnd: () => {
-        recognizerRef.current = null;
-        speechSessionActiveRef.current = false;
+      onFinal: (text) => {
+        receivedTranscriptRef.current = true;
+        appendSpeechText(text);
+        pendingInterimRef.current = '';
+      },
+      onFinished: () => {
+        cleanupSpeechResources();
 
         if (speechFailedRef.current) return;
 
+        // Flush any remaining interim text
         if (pendingInterimRef.current) {
           appendSpeechText(pendingInterimRef.current);
           pendingInterimRef.current = '';
-          setInterimTranscript('');
-          setSpeechState('idle');
-          return;
         }
 
         setInterimTranscript('');
@@ -142,37 +174,34 @@ function App() {
         speechFailedRef.current = true;
         setSpeechState('error');
         setSpeechError(err.message);
-        setInterimTranscript('');
         pendingInterimRef.current = '';
+        cleanupSpeechResources();
       }
     });
 
-    recognizerRef.current = recognizer;
-    try {
-      recognizer.start();
-    } catch {
-      speechSessionActiveRef.current = false;
-      recognizerRef.current = null;
-      setSpeechState('error');
-      setSpeechError('无法启动语音识别，请重试或改用文本输入。');
-    }
-  }, [appendSpeechText]);
+    cloudRef.current = cloudSession;
+    cloudSession.connect();
+  }, [appendSpeechText, cleanupSpeechResources]);
 
   const handleStopSpeech = useCallback(() => {
-    if (recognizerRef.current) {
-      recognizerRef.current.stop();
+    // Stop audio capture first
+    if (captureRef.current) {
+      captureRef.current.stop();
+      captureRef.current = null;
+    }
+    // Then tell proxy to finish
+    if (cloudRef.current) {
+      setSpeechState('finishing');
+      cloudRef.current.sendFinish();
     }
   }, []);
 
   // cleanup on unmount
   useEffect(() => {
     return () => {
-      if (recognizerRef.current) {
-        recognizerRef.current.dispose();
-      }
-      speechSessionActiveRef.current = false;
+      cleanupSpeechResources();
     };
-  }, []);
+  }, [cleanupSpeechResources]);
 
   // ── existing handlers ─────────────────────────
   function handleGenerate() {
@@ -282,7 +311,7 @@ function App() {
             speechState={speechState}
             interimTranscript={interimTranscript}
             speechError={speechError}
-            speechSupported={speechSupported.current}
+            speechSupported={voiceSupported}
             speechBusy={isSpeechBusy}
             onRawTextChange={setRawText}
             onUseExample={handleUseExample}
