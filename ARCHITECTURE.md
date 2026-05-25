@@ -4,11 +4,12 @@
 
 ## 1. 当前工程定位
 
-VoiceFlow 当前是一个 Vite React 单页应用，目标是验证“职场语音意图输入助手”的核心链路：
+VoiceFlow 当前是一个 Vite React 单页应用，目标是验证"职场语音意图输入助手"的核心链路：
 
 ```text
 口述意图 / 模拟语音输入
-  -> 选择沟通对象和回复风格
+  -> 选择意图场景、沟通对象和回复风格
+  -> 生成依据展示
   -> 结构化理解
   -> 生成多版本职场回复
   -> 风险提示
@@ -25,6 +26,7 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证“职场语�
 ├── ARCHITECTURE.md
 ├── voice-input-pm-analysis.html
 ├── 竞品分析报告-语音输入助手MVP.md
+├── PRD-职场嘴替_v2.md
 ├── package.json
 ├── vite.config.js
 ├── index.html
@@ -35,6 +37,7 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证“职场语�
     ├── components
     │   ├── InputPanel.jsx
     │   ├── OptionControls.jsx
+    │   ├── BasisPanel.jsx
     │   ├── SummaryPanel.jsx
     │   ├── ReplyCards.jsx
     │   └── RiskPanel.jsx
@@ -49,10 +52,11 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证“职场语�
 
 | 模块 | 职责 | 后续是否可替换 |
 |---|---|---|
-| `App.jsx` | 页面状态编排、生成/清空/复制等交互 | 可继续拆成 hooks |
+| `App.jsx` | 页面状态编排、生成/清空/复制等交互、语境变化检测 | 可继续拆成 hooks |
 | `components/*` | 展示和局部交互组件 | 可复用到后续真实 API 版本 |
-| `data/examples.js` | 演示样例，模拟语音输入 | 可扩展为 Demo 脚本库 |
-| `lib/generateReply.js` | Mock 规则引擎，生成结构化结果、回复和风险提示 | 可替换为 LLM adapter |
+| `components/BasisPanel.jsx` | 展示生成依据：意图场景、沟通对象、回复风格、解释文本 | 可复用 |
+| `data/examples.js` | 五类意图场景演示样例，模拟语音输入 | 可扩展为 Demo 脚本库 |
+| `lib/generateReply.js` | Mock 规则引擎，生成结构化结果、多版本回复、风险提示和生成依据 | 可替换为 LLM adapter |
 | `lib/generateReply.test.js` | 验证核心生成逻辑 | 后续保留为回归测试 |
 
 ## 3. 数据流
@@ -60,16 +64,19 @@ VoiceFlow 当前是一个 Vite React 单页应用，目标是验证“职场语�
 ```mermaid
 flowchart LR
   A["用户输入 / 模拟语音输入"] --> B["App 状态: rawText"]
-  C["沟通对象 audience"] --> E["generateReply(input)"]
-  D["回复风格 tone"] --> E
+  C["意图场景 scenario"] --> E["generateReply(input)"]
+  D["沟通对象 audience"] --> E
+  F["回复风格 tone"] --> E
   B --> E
-  E --> F["summary 结构化理解"]
-  E --> G["replies 多版本回复"]
-  E --> H["risks 风险提示"]
-  F --> I["SummaryPanel"]
-  G --> J["ReplyCards"]
-  H --> K["RiskPanel"]
-  J --> L["用户编辑 / 复制"]
+  E --> G["basis 生成依据"]
+  E --> H["summary 结构化理解"]
+  E --> I["replies 多版本回复"]
+  E --> J["risks 风险提示"]
+  G --> K["BasisPanel"]
+  H --> L["SummaryPanel"]
+  I --> M["ReplyCards"]
+  J --> N["RiskPanel"]
+  M --> O["用户编辑 / 复制"]
 ```
 
 `generateReply(input)` 是当前最重要的工程接口：
@@ -77,6 +84,7 @@ flowchart LR
 ```js
 generateReply({
   rawText: string,
+  scenario: 'progress' | 'request' | 'negotiate' | 'followup' | 'confirm',
   audience: 'leader' | 'peer' | 'client' | 'subordinate',
   tone: 'concise' | 'polite' | 'driving' | 'formal'
 })
@@ -86,6 +94,12 @@ generateReply({
 
 ```js
 {
+  basis: {
+    scenarioLabel: string,
+    audienceLabel: string,
+    toneLabel: string,
+    explanation: string
+  },
   summary: {
     conclusion: string,
     reason: string,
@@ -103,26 +117,35 @@ generateReply({
 
 这个接口已经具备清晰的替换边界：后续接入真实 LLM 时，UI 层不需要重写，只需要把 `generateReply` 替换为异步 adapter。
 
+### 第二阶段新增
+
+在 PR #2 中新增了 `scenario` 参数和 `basis` 返回字段。五个场景 (`progress` / `request` / `negotiate` / `followup` / `confirm`) 各有独立的推断逻辑和风险检查规则。
+
+当前阶段用户显式选择场景，作为 Demo 表达的一部分。未来当真实能力成熟后（LLM 能够可靠地判断口语意图归属），场景控件应收束为系统自动识别出的标签——用户只在系统判断错误时才需要手动纠正。
+
 ## 4. 当前能力与工程状态
 
 已完成：
 
 - React 单页应用。
-- Mock 语音输入样例。
+- Mock 语音输入样例（五类意图场景各一个）。
+- 意图场景选择：同步进展、请求协作、拒绝协商、催促推进、确认回应。
 - 沟通对象选择：领导、同事、客户、下属。
 - 回复风格选择：简洁、礼貌、推进、正式。
+- 生成依据展示：意图场景、沟通对象、回复风格、解释文本。
 - 结构化提取：结论、原因、时间、下一步。
 - 三版本回复：推荐版、简短版、增强推进版。
-- 风险提示：时间、下一步、承诺、正式对象表达。
+- 场景化风险提示：每类场景有独立的组织重点和风险检查规则。
+- 语境变化检测：修改场景/对象/风格后显示"语境已变化，请重新生成回复"。
 - 推荐回复编辑与复制。
-- README、产品规划 HTML、竞品分析报告。
-- Vitest 单元测试覆盖核心生成场景。
+- README、ARCHITECTURE、PRD_v2、产品规划 HTML、竞品分析报告。
+- Vitest 单元测试覆盖 13 个场景（包含空输入和参数默认值）。
 
 已验证：
 
 ```bash
-npm test
-npm run build
+npm test   # 13 passed
+npm run build   # ✓ built
 ```
 
 ## 5. 为什么当前实现可以工程落地
@@ -131,69 +154,43 @@ npm run build
 
 1. UI 与生成逻辑分离：组件只负责展示和交互，生成规则集中在 `generateReply.js`。
 2. Mock 与真实能力可替换：ASR 和 LLM 都可以以后接入，不影响页面主结构。
-3. 数据模型稳定：`rawText + audience + tone -> summary + replies + risks` 可以覆盖 Mock、LLM、后端 API 三种形态。
-4. 测试先覆盖核心价值：当前测试验证客户报价延期、领导汇报延期、空输入三个关键场景。
+3. 数据模型稳定：`rawText + scenario + audience + tone -> basis + summary + replies + risks` 可以覆盖 Mock、LLM、后端 API 三种形态。
+4. 测试先覆盖核心价值：当前测试覆盖五类场景的正常路径、风险触发条件、空输入和参数默认值。
 5. 文档链路完整：规划、竞品、README、架构文档分别服务产品判断、差异化说明、运行交付和工程评审。
 
 ## 6. 下一步方向建议
 
-### 方向 A：增强产品可信度
+### 方向 A：真实语音入口（PR #3）
 
-适合当前最优先推进。
-
-- 增加更多职场意图类型：汇报延期、客户报价、催反馈、拒绝需求、请假交接、感谢确认。
-- 增强风险提示规则：缺对象、缺时间、语气过硬、责任边界不清、承诺过度。
-- 在界面中显示“为什么这样生成”，帮助评审理解产品逻辑。
-- README 增加 Demo 脚本，方便录视频。
-
-价值：不依赖外部 API，稳定提升 Demo 说服力。
-
-### 方向 B：接入真实语音入口
-
-适合第二阶段做。
+适合下一阶段做。
 
 - 新增 `src/lib/speechInput.js`，封装 Web Speech API。
 - UI 增加真实录音按钮和浏览器兼容提示。
 - 不支持 Web Speech API 时回退到文本输入和模拟语音输入。
 
-价值：更接近“语音输入法”题面，但浏览器兼容性和权限会带来 Demo 风险。
+价值：更接近"语音输入法"题面，但浏览器兼容性和权限会带来 Demo 风险。
 
-### 方向 C：接入真实 LLM
+### 方向 B：接入真实 LLM（PR #4）
 
-适合第三阶段做。
+适合后续做。
 
 - 新增 `src/lib/replyAdapter.js`。
 - 默认继续 Mock，配置环境变量后使用真实 LLM。
-- 输出结构保持 `summary/replies/risks`，避免改 UI。
+- 输出结构保持 `basis/summary/replies/risks`，避免改 UI。
 
 价值：生成效果更自然，但需要处理 API Key、网络、费用、隐私说明。
 
-### 方向 D：工程交付完善
+### 方向 C：场景自动识别（远期）
 
-建议和 A 同步做。
-
-- 补充 GitHub 仓库提交。
-- 按功能模块提交 commit。
-- 在 README 放 Demo 视频链接位置。
-- 增加截图或 GIF。
-- 若需要部署，可用 GitHub Pages、Vercel 或 Netlify。
+当前用户显式选择意图场景。当 LLM 能力成熟后，可将 `scenario` 参数改为可选——系统自动推断意图分类，仅在置信度低或用户需要覆盖时才展示场景选择器。
 
 ## 7. 推荐下一步
 
-建议优先做 **方向 A + 方向 D**：
+建议优先做 **方向 A**（真实语音入口）：
 
 ```text
-先把 Demo 做得更像一个完整产品
-  -> 增加职场场景和风险规则
-  -> 补 README Demo 脚本
-  -> 提交到 GitHub
-  -> 录视频
+第二阶段场景化和 Demo 表达已完成
+  -> 接入 Web Speech API 做真实录音
+  -> 保留文本输入和模拟语音作为回退
+  -> PR #3
 ```
-
-原因：
-
-- 当前项目最需要证明的是产品洞察和可演示闭环。
-- Mock 优先路线已经确定，继续增强场景覆盖比过早接 API 更稳。
-- 活动评审会看 README、Demo、commit、原创说明，这些比真实 ASR 更影响首轮观感。
-
-真实语音和真实 LLM 可以作为 README 的 V2/V3 计划，也可以在基础 Demo 稳定后再接入。

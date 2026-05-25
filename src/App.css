@@ -140,6 +140,17 @@ h2 {
   color: #0b5f59;
 }
 
+.context-dirty-banner {
+  margin: 0 0 12px;
+  padding: 12px 18px;
+  border: 1px solid #facc15;
+  border-radius: 8px;
+  background: #fefce8;
+  color: #854d0e;
+  font-weight: 700;
+  font-size: 15px;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(320px, 0.88fr) minmax(0, 1.12fr);
@@ -231,6 +242,10 @@ h2 {
   gap: 8px;
 }
 
+.segmented-scenario {
+  grid-template-columns: repeat(5, 1fr);
+}
+
 .segmented button {
   padding: 0 10px;
 }
@@ -300,6 +315,44 @@ h2 {
   margin-top: 12px;
 }
 
+.basis-panel .basis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.basis-item {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.basis-item span {
+  display: block;
+  margin-bottom: 8px;
+  color: #667386;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.basis-item strong {
+  display: block;
+  color: #0b5f59;
+  line-height: 1.45;
+}
+
+.basis-explanation {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f4fbfa;
+  color: #2d3948;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
 .risk-panel ul {
   margin: 0;
   padding-left: 20px;
@@ -333,7 +386,9 @@ h2 {
 
   .metric-strip,
   .segmented,
-  .summary-grid {
+  .segmented-scenario,
+  .summary-grid,
+  .basis-grid {
     grid-template-columns: 1fr;
   }
 
