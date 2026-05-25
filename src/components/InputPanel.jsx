@@ -5,6 +5,7 @@ export function InputPanel({
   interimTranscript,
   speechError,
   speechSupported,
+  speechBusy,
   onRawTextChange,
   onUseExample,
   onClear,
@@ -13,6 +14,7 @@ export function InputPanel({
   onStopSpeech
 }) {
   const isListening = speechState === 'listening';
+  const isStarting = speechState === 'starting';
   const isUnsupported = speechState === 'unsupported';
   const hasSpeechError = speechState === 'error';
 
@@ -37,12 +39,20 @@ export function InputPanel({
       );
     }
 
+    if (isStarting) {
+      return (
+        <button className="speech-button speech-idle" type="button" disabled>
+          正在连接麦克风...
+        </button>
+      );
+    }
+
     return (
       <button
         className="speech-button speech-idle"
         type="button"
         onClick={onStartSpeech}
-        disabled={isListening}
+        disabled={speechBusy}
       >
         开始语音输入
       </button>
@@ -58,7 +68,7 @@ export function InputPanel({
         </div>
         {speechSupported ? (
           <span className="status-pill">
-            {isListening ? '正在听写...' : '语音输入可用'}
+            {isStarting ? '正在连接...' : isListening ? '正在听写...' : '语音输入可用'}
           </span>
         ) : (
           <span className="status-pill">Mock 语音输入</span>
@@ -74,7 +84,7 @@ export function InputPanel({
             : '例如：供应商还没确认，今天报价给不了，最快明天下午'
         }
         rows={8}
-        disabled={isListening}
+        disabled={speechBusy}
       />
 
       {isListening && interimTranscript ? (
@@ -97,7 +107,7 @@ export function InputPanel({
           className="primary-button"
           type="button"
           onClick={onGenerate}
-          disabled={isListening}
+          disabled={speechBusy}
         >
           生成职场回复
         </button>
@@ -105,14 +115,14 @@ export function InputPanel({
         <button
           type="button"
           onClick={onUseExample}
-          disabled={isListening}
+          disabled={speechBusy}
         >
           使用演示样例
         </button>
         <button
           type="button"
           onClick={onClear}
-          disabled={isListening}
+          disabled={speechBusy}
         >
           清空
         </button>

@@ -57,13 +57,17 @@ function App() {
   // ── speech state ──────────────────────────────
   const speechSupported = useRef(isSpeechRecognitionSupported());
   const recognizerRef = useRef(null);
+  const speechSessionActiveRef = useRef(false);
+  const speechFailedRef = useRef(false);
+  const receivedTranscriptRef = useRef(false);
+  const pendingInterimRef = useRef('');
   const [speechState, setSpeechState] = useState(
     speechSupported.current ? 'idle' : 'unsupported'
   );
   const [interimTranscript, setInterimTranscript] = useState('');
   const [speechError, setSpeechError] = useState('');
 
-  const isListening = speechState === 'listening';
+  const isSpeechBusy = speechState === 'starting' || speechState === 'listening';
 
   const contextDirty =
     rawText.trim() !== '' &&
@@ -78,11 +82,25 @@ function App() {
   );
 
   // ── speech handlers ───────────────────────────
-  const handleStartSpeech = useCallback(() => {
-    if (!speechSupported.current || isListening) return;
+  const appendSpeechText = useCallback((text) => {
+    const segment = text.trim();
+    if (!segment) return;
+    setRawText((prev) => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed}，${segment}` : segment;
+    });
+  }, []);
 
+  const handleStartSpeech = useCallback(() => {
+    if (!speechSupported.current || speechSessionActiveRef.current) return;
+
+    speechSessionActiveRef.current = true;
+    speechFailedRef.current = false;
+    receivedTranscriptRef.current = false;
+    pendingInterimRef.current = '';
     setSpeechError('');
     setInterimTranscript('');
+    setSpeechState('starting');
 
     const recognizer = createSpeechRecognizer({
       onStart: () => {
@@ -90,32 +108,55 @@ function App() {
       },
       onTranscript: ({ finalText, interimText }) => {
         if (finalText.trim()) {
-          setRawText((prev) => {
-            const trimmed = prev.trim();
-            if (!trimmed) return finalText.trim();
-            return trimmed + '，' + finalText.trim();
-          });
-          setInterimTranscript('');
-        } else {
-          setInterimTranscript(interimText);
+          receivedTranscriptRef.current = true;
+          appendSpeechText(finalText);
         }
+        pendingInterimRef.current = interimText.trim();
+        if (interimText.trim()) receivedTranscriptRef.current = true;
+        setInterimTranscript(interimText);
       },
       onEnd: () => {
-        setSpeechState('idle');
-        setInterimTranscript('');
         recognizerRef.current = null;
+        speechSessionActiveRef.current = false;
+
+        if (speechFailedRef.current) return;
+
+        if (pendingInterimRef.current) {
+          appendSpeechText(pendingInterimRef.current);
+          pendingInterimRef.current = '';
+          setInterimTranscript('');
+          setSpeechState('idle');
+          return;
+        }
+
+        setInterimTranscript('');
+        if (!receivedTranscriptRef.current) {
+          setSpeechState('error');
+          setSpeechError('未检测到语音内容，请确认麦克风正常并再次尝试。');
+          return;
+        }
+
+        setSpeechState('idle');
       },
       onError: (err) => {
+        speechFailedRef.current = true;
         setSpeechState('error');
         setSpeechError(err.message);
         setInterimTranscript('');
-        recognizerRef.current = null;
+        pendingInterimRef.current = '';
       }
     });
 
     recognizerRef.current = recognizer;
-    recognizer.start();
-  }, [isListening]);
+    try {
+      recognizer.start();
+    } catch {
+      speechSessionActiveRef.current = false;
+      recognizerRef.current = null;
+      setSpeechState('error');
+      setSpeechError('无法启动语音识别，请重试或改用文本输入。');
+    }
+  }, [appendSpeechText]);
 
   const handleStopSpeech = useCallback(() => {
     if (recognizerRef.current) {
@@ -129,6 +170,7 @@ function App() {
       if (recognizerRef.current) {
         recognizerRef.current.dispose();
       }
+      speechSessionActiveRef.current = false;
     };
   }, []);
 
@@ -241,6 +283,7 @@ function App() {
             interimTranscript={interimTranscript}
             speechError={speechError}
             speechSupported={speechSupported.current}
+            speechBusy={isSpeechBusy}
             onRawTextChange={setRawText}
             onUseExample={handleUseExample}
             onClear={handleClear}
