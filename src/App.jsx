@@ -1,24 +1,38 @@
 import { useMemo, useState } from 'react';
 import { InputPanel } from './components/InputPanel.jsx';
 import { OptionControls } from './components/OptionControls.jsx';
+import { BasisPanel } from './components/BasisPanel.jsx';
 import { ReplyCards } from './components/ReplyCards.jsx';
 import { RiskPanel } from './components/RiskPanel.jsx';
 import { SummaryPanel } from './components/SummaryPanel.jsx';
 import { examples } from './data/examples.js';
-import { audienceLabels, generateReply, toneLabels } from './lib/generateReply.js';
+import {
+  audienceLabels,
+  generateReply,
+  scenarioLabels,
+  toneLabels
+} from './lib/generateReply.js';
 
+const scenarioOptions = Object.entries(scenarioLabels).map(([value, label]) => ({ value, label }));
 const audienceOptions = Object.entries(audienceLabels).map(([value, label]) => ({ value, label }));
 const toneOptions = Object.entries(toneLabels).map(([value, label]) => ({ value, label }));
 
-const emptyResult = generateReply({ rawText: '', audience: 'peer', tone: 'polite' });
+const emptyResult = generateReply({
+  rawText: '',
+  scenario: 'progress',
+  audience: 'peer',
+  tone: 'polite'
+});
 
 function App() {
   const [rawText, setRawText] = useState(examples[0].text);
+  const [scenario, setScenario] = useState(examples[0].scenario);
   const [audience, setAudience] = useState(examples[0].audience);
   const [tone, setTone] = useState(examples[0].tone);
   const [result, setResult] = useState(() =>
     generateReply({
       rawText: examples[0].text,
+      scenario: examples[0].scenario,
       audience: examples[0].audience,
       tone: examples[0].tone
     })
@@ -28,25 +42,42 @@ function App() {
   const [copiedKey, setCopiedKey] = useState('');
   const [exampleIndex, setExampleIndex] = useState(0);
 
+  // Track the params that were used for the last generation
+  const [generatedParams, setGeneratedParams] = useState({
+    rawText: examples[0].text,
+    scenario: examples[0].scenario,
+    audience: examples[0].audience,
+    tone: examples[0].tone
+  });
+
+  const contextDirty =
+    rawText.trim() !== '' &&
+    (rawText.trim() !== generatedParams.rawText.trim() ||
+      scenario !== generatedParams.scenario ||
+      audience !== generatedParams.audience ||
+      tone !== generatedParams.tone);
+
   const contextLine = useMemo(
-    () => `${audienceLabels[audience]} · ${toneLabels[tone]}语气`,
-    [audience, tone]
+    () => `${scenarioLabels[scenario]} · ${audienceLabels[audience]} · ${toneLabels[tone]}语气`,
+    [scenario, audience, tone]
   );
 
   function handleGenerate() {
     if (!rawText.trim()) {
-      const nextResult = generateReply({ rawText, audience, tone });
+      const nextResult = generateReply({ rawText, scenario, audience, tone });
       setResult(nextResult);
       setEditableReply('');
       setError('请先输入一段职场口述内容。');
+      setGeneratedParams({ rawText, scenario, audience, tone });
       return;
     }
 
-    const nextResult = generateReply({ rawText, audience, tone });
+    const nextResult = generateReply({ rawText, scenario, audience, tone });
     setResult(nextResult);
     setEditableReply(nextResult.replies.recommended);
     setError('');
     setCopiedKey('');
+    setGeneratedParams({ rawText, scenario, audience, tone });
   }
 
   function handleUseExample() {
@@ -54,18 +85,26 @@ function App() {
     const example = examples[nextIndex];
     const nextResult = generateReply({
       rawText: example.text,
+      scenario: example.scenario,
       audience: example.audience,
       tone: example.tone
     });
 
     setExampleIndex(nextIndex);
     setRawText(example.text);
+    setScenario(example.scenario);
     setAudience(example.audience);
     setTone(example.tone);
     setResult(nextResult);
     setEditableReply(nextResult.replies.recommended);
     setError('');
     setCopiedKey('');
+    setGeneratedParams({
+      rawText: example.text,
+      scenario: example.scenario,
+      audience: example.audience,
+      tone: example.tone
+    });
   }
 
   function handleClear() {
@@ -74,6 +113,7 @@ function App() {
     setEditableReply('');
     setError('');
     setCopiedKey('');
+    setGeneratedParams({ rawText: '', scenario, audience, tone });
   }
 
   async function handleCopy(text, key) {
@@ -85,6 +125,10 @@ function App() {
     } catch {
       setCopiedKey('');
     }
+  }
+
+  function handleParamChange(setter, value) {
+    setter(value);
   }
 
   return (
@@ -101,6 +145,7 @@ function App() {
         <div className="metric-strip" aria-label="产品定位指标">
           <span>意图输入</span>
           <span>对象感回复</span>
+          <span>场景化生成</span>
           <span>风险提示</span>
         </div>
       </header>
@@ -109,6 +154,12 @@ function App() {
         <span>当前语境</span>
         <strong>{contextLine}</strong>
       </section>
+
+      {contextDirty ? (
+        <section className="context-dirty-banner" aria-live="polite">
+          语境已变化，请重新生成回复
+        </section>
+      ) : null}
 
       <div className="workspace">
         <div className="left-column">
@@ -121,16 +172,20 @@ function App() {
             onGenerate={handleGenerate}
           />
           <OptionControls
+            scenario={scenario}
+            scenarioOptions={scenarioOptions}
             audience={audience}
             tone={tone}
             audienceOptions={audienceOptions}
             toneOptions={toneOptions}
-            onAudienceChange={setAudience}
-            onToneChange={setTone}
+            onScenarioChange={(value) => handleParamChange(setScenario, value)}
+            onAudienceChange={(value) => handleParamChange(setAudience, value)}
+            onToneChange={(value) => handleParamChange(setTone, value)}
           />
         </div>
 
         <div className="right-column">
+          <BasisPanel basis={result.basis} />
           <SummaryPanel summary={result.summary} />
           <ReplyCards
             replies={result.replies}
