@@ -19,6 +19,7 @@ VoiceFlow 是一个 72 小时 MVP 原型，面向职场文字沟通场景。它�
 - 选择意图场景：同步进展、请求协作、拒绝协商、催促推进、确认回应。
 - 选择沟通对象：领导、同事、客户、下属。
 - 选择回复风格：简洁、礼貌、推进、正式。
+- **真实语音输入**：通过本地代理将麦克风音频发送至阿里云百炼 DashScope Paraformer 实时识别，转写结果追加到文本框。未配置密钥时可使用文本输入和演示样例。
 - 展示生成依据：基于用户选择的职场意图场景、沟通对象和表达策略解释生成结果。
 - 自动提取结构化信息：结论、原因、时间、下一步。
 - 生成三种回复版本：推荐版、简短版、增强推进版。
@@ -90,19 +91,24 @@ VoiceFlow 是一个 72 小时 MVP 原型，面向职场文字沟通场景。它�
 
 ## 技术栈
 
-- Vite
-- React
-- Vitest
-- 纯前端 Mock 规则引擎
+- Vite + React 前端
+- Node WebSocket 代理
+- 阿里云百炼 DashScope Paraformer（实时语音识别）
+- Vitest 单元测试
+- 纯前端 Mock 规则引擎（回复生成）
 
 ## 本地运行
 
-```bash
+```powershell
 npm install
+Copy-Item .env.example .env.local
+# 在 .env.local 中填写 DASHSCOPE_API_KEY，不要提交该文件
 npm run dev
 ```
 
-浏览器打开终端输出的本地地址即可体验。
+一条命令同时启动前端 Vite 开发服务器和本地 ASR 代理。浏览器打开终端输出的本地地址即可体验。
+
+未配置 `DASHSCOPE_API_KEY` 时，语音输入功能不可用，但仍可使用文本输入和演示样例完成完整的产品体验。
 
 ## 构建与测试
 
@@ -111,21 +117,50 @@ npm test
 npm run build
 ```
 
+## 真实语音输入
+
+语音输入通过本地 Node 代理将麦克风音频发送至阿里云百炼 DashScope Paraformer (`paraformer-realtime-v2`) 进行实时识别，转写结果追加到文本框。
+
+**数据流**：
+
+```text
+麦克风 → getUserMedia → AudioContext 重采样（16k mono PCM）
+  → 本地 WebSocket 代理 (server/asrProxy.js)
+  → DashScope WebSocket (paraformer-realtime-v2)
+  → 转写文本追加到 rawText → 复用现有回复生成闭环
+```
+
+密钥通过 `.env.local` 注入服务端，不会进入浏览器 bundle。音频不在本地持久化。
+
+### 语音输入演示步骤
+
+1. 确保已正确配置 `.env.local` 中的 `DASHSCOPE_API_KEY`。
+2. 执行 `npm run dev` 启动前端和代理。
+3. 在支持麦克风的浏览器（Chrome/Edge）中打开页面。
+4. 确认页面显示「语音输入可用」标签和「开始语音输入」按钮。
+5. 点击「开始语音输入」，授予麦克风权限，说出职场口述内容。
+6. 观察文本框下方显示临时识别结果。
+7. 点击「停止录音」，最终识别文本追加到文本框，提示"语境已变化，请重新生成回复"。
+8. 选择意图场景、沟通对象、回复风格，点击「生成职场回复」。
+
+### 降级说明
+
+未配置 `DASHSCOPE_API_KEY` 或 DashScope 连接失败时，可使用文本输入和「使用演示样例」完成完整体验。浏览器不支持麦克风时自动展示降级提示。
+
 ## Mock 说明
 
-当前版本不接入真实语音识别和真实大模型。页面中的"模拟语音输入"使用预设职场口述样例，生成逻辑位于 `src/lib/generateReply.js`。
+回复生成仍使用本地 Mock 规则引擎（`src/lib/generateReply.js`），不接入真实大模型。
 
-第二阶段仍是 Mock 生成。真实语音输入将在独立 PR #3 中实现。
+语音输入时，麦克风音频通过本地代理发送至阿里云百炼 Paraformer 服务进行识别。本项目不在本地后端持久化保存音频或文本；数据处理还受阿里云服务策略约束。
 
 后续可以替换为：
 
-- Web Speech API 或第三方 ASR 服务。
-- OpenAI、Claude、DeepSeek 等真实 LLM。
+- OpenAI、Claude、DeepSeek 等真实 LLM 替代 Mock 规则引擎。
 - 个性化术语库和联系人语气偏好。
 
 ## 隐私说明
 
-首版 MVP 为纯前端演示，不把用户输入上传到后端。若后续接入云端 ASR 或 LLM，需要在 README 和产品界面中明确说明数据处理方式、保存策略和用户授权。
+当前版本不自建后端保存用户文本或音频。DashScope API Key 通过服务端环境变量注入，不会暴露到浏览器。语音识别数据由阿里云百炼服务处理，数据处理方式受阿里云服务策略约束。回复生成在当前版本中仍使用本地 Mock 规则，不向任何服务发送文本。
 
 ## 项目资料
 
@@ -155,3 +190,8 @@ npm run build
 - 场景化沟通风险提示。
 
 通用 ASR、自动标点和基础 AI 润色被视为行业基础能力，不作为本项目的核心差异化。
+
+demo 链接
+我用夸克网盘给你分享了「VoiceFlow 职场语音意图输入助手 - 个人 - Microsoft​ Edge 2026-05-25 23-52-12.mp4」，点击链接或复制整段内容，打开「夸克APP」即可获取。
+/~9c383YkFVQ~:/
+链接：https://pan.quark.cn/s/8449e64a123c

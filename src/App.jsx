@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InputPanel } from './components/InputPanel.jsx';
 import { OptionControls } from './components/OptionControls.jsx';
 import { BasisPanel } from './components/BasisPanel.jsx';
@@ -12,6 +12,8 @@ import {
   scenarioLabels,
   toneLabels
 } from './lib/generateReply.js';
+import { createAudioCapture } from './lib/audioCapture.js';
+import { createCloudSpeechSession } from './lib/cloudSpeechInput.js';
 
 const scenarioOptions = Object.entries(scenarioLabels).map(([value, label]) => ({ value, label }));
 const audienceOptions = Object.entries(audienceLabels).map(([value, label]) => ({ value, label }));
@@ -24,7 +26,12 @@ const emptyResult = generateReply({
   tone: 'polite'
 });
 
+// Check if getUserMedia is available (not needed in SSR or http)
 function App() {
+  const voiceSupported = useRef(
+    typeof navigator !== 'undefined' && !!(navigator.mediaDevices?.getUserMedia)
+  ).current;
+
   const [rawText, setRawText] = useState(examples[0].text);
   const [scenario, setScenario] = useState(examples[0].scenario);
   const [audience, setAudience] = useState(examples[0].audience);
@@ -50,6 +57,21 @@ function App() {
     tone: examples[0].tone
   });
 
+  // ── speech state ──────────────────────────────
+  const speechSessionActiveRef = useRef(false);
+  const speechFailedRef = useRef(false);
+  const receivedTranscriptRef = useRef(false);
+  const pendingInterimRef = useRef('');
+  const captureRef = useRef(null);
+  const cloudRef = useRef(null);
+  const [speechState, setSpeechState] = useState(
+    voiceSupported ? 'idle' : 'unsupported'
+  );
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [speechError, setSpeechError] = useState('');
+
+  const isSpeechBusy = speechState === 'starting' || speechState === 'listening' || speechState === 'finishing';
+
   const contextDirty =
     rawText.trim() !== '' &&
     (rawText.trim() !== generatedParams.rawText.trim() ||
@@ -62,6 +84,126 @@ function App() {
     [scenario, audience, tone]
   );
 
+  // ── speech helpers ────────────────────────────
+  const cleanupSpeechResources = useCallback(() => {
+    if (captureRef.current) {
+      captureRef.current.stop();
+      captureRef.current = null;
+    }
+    if (cloudRef.current) {
+      cloudRef.current.dispose();
+      cloudRef.current = null;
+    }
+    speechSessionActiveRef.current = false;
+  }, []);
+
+  const appendSpeechText = useCallback((text) => {
+    const segment = text.trim();
+    if (!segment) return;
+    setRawText((prev) => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed}，${segment}` : segment;
+    });
+  }, []);
+
+  // ── speech handlers ───────────────────────────
+  const handleStartSpeech = useCallback(() => {
+    if (!voiceSupported || speechSessionActiveRef.current) return;
+
+    speechSessionActiveRef.current = true;
+    speechFailedRef.current = false;
+    receivedTranscriptRef.current = false;
+    pendingInterimRef.current = '';
+    setSpeechError('');
+    setInterimTranscript('');
+    setSpeechState('starting');
+
+    const cloudSession = createCloudSpeechSession({
+      onReady: () => {
+        cloudSession.sendStart();
+      },
+      onStarted: () => {
+        setSpeechState('listening');
+
+        const capture = createAudioCapture({
+          onPcmFrame: (buffer) => {
+            cloudSession.sendPcm(buffer);
+          },
+          onError: (err) => {
+            speechFailedRef.current = true;
+            setSpeechState('error');
+            setSpeechError(err.message);
+            cleanupSpeechResources();
+          }
+        });
+
+        captureRef.current = capture;
+        capture.start();
+      },
+      onInterim: (text) => {
+        receivedTranscriptRef.current = true;
+        pendingInterimRef.current = text;
+        setInterimTranscript(text);
+      },
+      onFinal: (text) => {
+        receivedTranscriptRef.current = true;
+        appendSpeechText(text);
+        pendingInterimRef.current = '';
+      },
+      onFinished: () => {
+        cleanupSpeechResources();
+
+        if (speechFailedRef.current) return;
+
+        // Flush any remaining interim text
+        if (pendingInterimRef.current) {
+          appendSpeechText(pendingInterimRef.current);
+          pendingInterimRef.current = '';
+        }
+
+        setInterimTranscript('');
+        if (!receivedTranscriptRef.current) {
+          setSpeechState('error');
+          setSpeechError('未检测到语音内容，请确认麦克风正常并再次尝试。');
+          return;
+        }
+
+        setSpeechState('idle');
+      },
+      onError: (err) => {
+        speechFailedRef.current = true;
+        setSpeechState('error');
+        setSpeechError(err.message);
+        pendingInterimRef.current = '';
+        cleanupSpeechResources();
+      }
+    });
+
+    cloudRef.current = cloudSession;
+    cloudSession.connect();
+  }, [appendSpeechText, cleanupSpeechResources]);
+
+  const handleStopSpeech = useCallback(() => {
+    // Stop audio capture first
+    if (captureRef.current) {
+      captureRef.current.stop();
+      captureRef.current = null;
+    }
+    // Then tell proxy to finish
+    if (cloudRef.current) {
+      setSpeechState('finishing');
+      cloudRef.current.sendFinish();
+    }
+  }, []);
+
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupSpeechResources();
+    };
+  }, [cleanupSpeechResources]);
+
+  // ── existing handlers ─────────────────────────
   function handleGenerate() {
     if (!rawText.trim()) {
       const nextResult = generateReply({ rawText, scenario, audience, tone });
@@ -166,10 +308,17 @@ function App() {
           <InputPanel
             rawText={rawText}
             error={error}
+            speechState={speechState}
+            interimTranscript={interimTranscript}
+            speechError={speechError}
+            speechSupported={voiceSupported}
+            speechBusy={isSpeechBusy}
             onRawTextChange={setRawText}
             onUseExample={handleUseExample}
             onClear={handleClear}
             onGenerate={handleGenerate}
+            onStartSpeech={handleStartSpeech}
+            onStopSpeech={handleStopSpeech}
           />
           <OptionControls
             scenario={scenario}
